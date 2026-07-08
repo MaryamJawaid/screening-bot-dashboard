@@ -170,20 +170,53 @@ export async function deletePendingSession(phoneNumber: string) {
   );
 }
 
-// Get call history with joined candidate names (same pattern as sales dashboard)
-export async function getCallHistory(limit = 100): Promise<CallRow[]> {
-  const { rows } = await pool.query(
-    `SELECT cs.id, cs.candidate_phone, c.name, cs.agent_key,
-            cs.status, cs.transcription, cs.analysis, cs.audio_url,
-            cs.conversation_id, cs.duration_seconds, cs.started_at,
-            cs.ended_at, cs.created_at, cs.updated_at
-     FROM call_sessions cs
-     JOIN candidates c ON cs.candidate_phone = c.phone_number
-     ORDER BY cs.created_at DESC 
-     LIMIT $1`,
-    [limit]
-  );
-  return rows;
+// Get call history with pagination support
+export async function getCallHistory(
+  limit = 20, 
+  offset = 0, 
+  searchTerm?: string
+): Promise<{ calls: CallRow[]; totalCount: number }> {
+  let whereClause = '';
+  let searchParams: any[] = [];
+  let paramCount = 3; // Starting from $3 since $1 is limit, $2 is offset
+
+  // Add search functionality
+  if (searchTerm && searchTerm.trim()) {
+    whereClause = `WHERE (c.name ILIKE $${paramCount} OR cs.candidate_phone ILIKE $${paramCount + 1} OR cs.status ILIKE $${paramCount + 2})`;
+    const searchPattern = `%${searchTerm.trim()}%`;
+    searchParams = [searchPattern, searchPattern, searchPattern];
+  }
+
+  // Get total count for pagination
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM call_sessions cs
+    JOIN candidates c ON cs.candidate_phone = c.phone_number
+    ${whereClause}
+  `;
+  
+  const { rows: countRows } = await pool.query(countQuery, searchParams);
+  const totalCount = parseInt(countRows[0].total);
+
+  // Get paginated data
+  const dataQuery = `
+    SELECT cs.id, cs.candidate_phone, c.name, cs.agent_key,
+           cs.status, cs.transcription, cs.analysis, cs.audio_url,
+           cs.conversation_id, cs.duration_seconds, cs.started_at,
+           cs.ended_at, cs.created_at, cs.updated_at
+    FROM call_sessions cs
+    JOIN candidates c ON cs.candidate_phone = c.phone_number
+    ${whereClause}
+    ORDER BY cs.created_at DESC 
+    LIMIT $1 OFFSET $2
+  `;
+
+  const { rows } = await pool.query(dataQuery, [limit, offset, ...searchParams]);
+  
+  return {
+    calls: rows,
+    totalCount
+  };
 }
 
 export default pool;

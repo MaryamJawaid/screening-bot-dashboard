@@ -32,25 +32,54 @@ function formatDuration(seconds?: number) {
   return `${remainingSeconds}s`;
 }
 
+type PaginationData = {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  limit: number;
+};
+
 export default function CallHistoryPage() {
   const [calls, setCalls] = useState<CallRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState<PaginationData>({
+    currentPage: 1,
+    totalPages: 1,
+    totalCount: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+    limit: 20
+  });
+
+  const fetchCalls = async (page = 1) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '20'
+      });
+      
+      const response = await fetch(`/api/calls?${params}`);
+      const data = await response.json();
+      
+      setCalls(data.calls);
+      setPagination(data.pagination);
+    } catch (error) {
+      console.error('Error fetching calls:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchCalls() {
-      try {
-        const response = await fetch('/api/calls');
-        const data = await response.json();
-        setCalls(data);
-      } catch (error) {
-        console.error('Error fetching calls:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchCalls();
+    fetchCalls(1);
   }, []);
+
+  const handlePageChange = (newPage: number) => {
+    fetchCalls(newPage);
+  };
 
   if (loading) {
     return (
@@ -85,31 +114,41 @@ export default function CallHistoryPage() {
           </Link>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        {/* Stats and Search Results Info */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-2xl font-bold text-gray-900">{calls.length}</div>
+            <div className="text-2xl font-bold text-gray-900">{pagination.totalCount}</div>
             <div className="text-sm text-gray-600">Total Calls</div>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-2xl font-bold text-green-600">
               {calls.filter(c => c.status === 'completed').length}
             </div>
-            <div className="text-sm text-gray-600">Completed</div>
+            <div className="text-sm text-gray-600">Completed (Page)</div>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-2xl font-bold text-blue-600">
               {calls.filter(c => c.status === 'in_progress').length}
             </div>
-            <div className="text-sm text-gray-600">In Progress</div>
+            <div className="text-sm text-gray-600">In Progress (Page)</div>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-2xl font-bold text-gray-600">
-              {calls.filter(c => c.duration_seconds).reduce((acc, call) => acc + (call.duration_seconds || 0), 0) / calls.filter(c => c.duration_seconds).length || 0}s
+              {Math.round(calls.filter(c => c.duration_seconds).reduce((acc, call) => acc + (call.duration_seconds || 0), 0) / calls.filter(c => c.duration_seconds).length) || 0}s
             </div>
             <div className="text-sm text-gray-600">Avg Duration</div>
           </div>
         </div>
+        
+        {/* Pagination Info */}
+        {!loading && (
+          <div className="mb-6 text-sm text-gray-600">
+            Showing {calls.length} of {pagination.totalCount} calls
+            {pagination.totalPages > 1 && (
+              <span> • Page {pagination.currentPage} of {pagination.totalPages}</span>
+            )}
+          </div>
+        )}
 
         {/* Call History Table */}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
@@ -175,6 +214,91 @@ export default function CallHistoryPage() {
               >
                 Start Your First Call
               </Link>
+            </div>
+          )}
+          
+          {/* Pagination Controls */}
+          {pagination.totalPages > 1 && (
+            <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button
+                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                    disabled={!pagination.hasPrevPage}
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ color: '#374151 !important' }}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                    disabled={!pagination.hasNextPage}
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ color: '#374151 !important' }}
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      Showing page <span className="font-medium">{pagination.currentPage}</span> of{' '}
+                      <span className="font-medium">{pagination.totalPages}</span>
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => handlePageChange(pagination.currentPage - 1)}
+                        disabled={!pagination.hasPrevPage}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ color: '#6b7280 !important' }}
+                      >
+                        ← Previous
+                      </button>
+                      
+                      {/* Page Numbers */}
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                        let pageNumber;
+                        if (pagination.totalPages <= 5) {
+                          pageNumber = i + 1;
+                        } else if (pagination.currentPage <= 3) {
+                          pageNumber = i + 1;
+                        } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                          pageNumber = pagination.totalPages - 4 + i;
+                        } else {
+                          pageNumber = pagination.currentPage - 2 + i;
+                        }
+                        
+                        const isCurrent = pageNumber === pagination.currentPage;
+                        return (
+                          <button
+                            key={pageNumber}
+                            onClick={() => handlePageChange(pageNumber)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              isCurrent
+                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                            }`}
+                            style={{ color: isCurrent ? '#2563eb !important' : '#6b7280 !important' }}
+                          >
+                            {pageNumber}
+                          </button>
+                        );
+                      })}
+                      
+                      <button
+                        onClick={() => handlePageChange(pagination.currentPage + 1)}
+                        disabled={!pagination.hasNextPage}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ color: '#6b7280 !important' }}
+                      >
+                        Next →
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

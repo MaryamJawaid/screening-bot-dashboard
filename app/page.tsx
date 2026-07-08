@@ -61,16 +61,17 @@ export default function ScreeningDashboard() {
       <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900" style={{ color: '#1f2937 !important' }}>
             KSA Screening Interview Dashboard
           </h1>
-          <p className="mt-2 text-lg text-gray-600">
+          <p className="mt-2 text-lg text-gray-600" style={{ color: '#4b5563 !important' }}>
             AI-powered screening interviews for candidates
           </p>
           <div className="mt-4">
             <Link 
               href="/history" 
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 transition-colors"
+              style={{ color: '#1d4ed8 !important' }}
             >
               View Call History →
             </Link>
@@ -79,9 +80,6 @@ export default function ScreeningDashboard() {
 
         {/* Main Form */}
         <div className="bg-white shadow-lg rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">
-            Start Screening Call
-          </h2>
 
           <div className="space-y-6">
             {/* Candidate Name */}
@@ -125,6 +123,7 @@ export default function ScreeningDashboard() {
               onClick={handleStartScreening}
               disabled={!canStartCall}
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{ color: 'white !important' }}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
@@ -153,16 +152,6 @@ export default function ScreeningDashboard() {
           </div>
         </div>
 
-        {/* Info Section */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-md p-4">
-          <h3 className="text-sm font-medium text-blue-900 mb-2">How it works:</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• The candidate will receive an automated call from Ahmad, our AI interviewer</li>
-            <li>• The screening covers sales experience, target achievement, and market knowledge</li>
-            <li>• Complete transcription and analysis will be available in call history</li>
-            <li>• Each interview typically lasts 10-15 minutes</li>
-          </ul>
-        </div>
       </div>
     </div>
   );

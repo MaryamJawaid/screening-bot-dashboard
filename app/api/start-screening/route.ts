@@ -21,14 +21,17 @@ export async function POST(req: NextRequest) {
       agentKey: 'ksa_screening_interview_agent',
     });
 
-    // Prepare payload for IngressFlow (exact schema match)
+    // Prepare payload for IngressFlow (matching working curl structure)
     const payload = {
-      agent_key: 'ksa_screening_interview_agent', // Must match enum exactly
+      agent_key: 'ksa_screening_interview_agent',
+      workflow_key: 'ksa_screening_interview',
       data: {
         workflow_slug: 'ksa_screening_interview',
-        workflow_id: 3,
-        candidate_name: candidateName,
-        contact_number: phoneNumber,
+        workflow_id: 20,
+        client: {
+          name: candidateName,
+          cell_number: phoneNumber,
+        },
       },
     };
 

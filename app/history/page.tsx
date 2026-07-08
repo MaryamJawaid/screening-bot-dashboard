@@ -1,8 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { getCallHistory, type CallRow } from "@/lib/db";
 import { formatDistanceToNow } from "date-fns";
-
-export const dynamic = "force-dynamic";
+import { useEffect, useState } from "react";
 
 function StatusBadge({ status }: { status: string }) {
   const statusColors: Record<string, string> = {
@@ -31,8 +32,36 @@ function formatDuration(seconds?: number) {
   return `${remainingSeconds}s`;
 }
 
-export default async function CallHistoryPage() {
-  const calls = await getCallHistory(100);
+export default function CallHistoryPage() {
+  const [calls, setCalls] = useState<CallRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCalls() {
+      try {
+        const response = await fetch('/api/calls');
+        const data = await response.json();
+        setCalls(data);
+      } catch (error) {
+        console.error('Error fetching calls:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchCalls();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading call history...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -40,16 +69,17 @@ export default async function CallHistoryPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900" style={{ color: '#1f2937 !important' }}>
               Screening Call History
             </h1>
-            <p className="mt-2 text-lg text-gray-600">
+            <p className="mt-2 text-lg text-gray-600" style={{ color: '#4b5563 !important' }}>
               View all completed and ongoing screening interviews
             </p>
           </div>
           <Link 
             href="/" 
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            style={{ color: 'white !important' }}
           >
             ← Start New Call
           </Link>
@@ -154,27 +184,30 @@ export default async function CallHistoryPage() {
 }
 
 function CallDetailsModal({ call }: { call: CallRow }) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <details className="group">
-      <summary className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors">
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors font-medium"
+        style={{ color: '#2563eb !important', textDecoration: 'none' }}
+      >
         View Details
-      </summary>
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 group-open:block hidden">
-        <div className="flex items-center justify-center min-h-screen p-4">
+      </button>
+      
+      {isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900" style={{ color: '#1f2937 !important' }}>
                   Call Details - {call.name}
                 </h2>
                 <button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const target = e.target as HTMLElement;
-                    const details = target.closest('details') as HTMLDetailsElement;
-                    if (details) details.open = false;
-                  }}
+                  onClick={() => setIsOpen(false)}
                   className="text-gray-400 hover:text-gray-600"
+                  style={{ color: '#6b7280 !important' }}
                 >
                   ✕
                 </button>
@@ -236,7 +269,7 @@ function CallDetailsModal({ call }: { call: CallRow }) {
               )}
 
               {call.analysis && (
-                <div>
+                <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Analysis</label>
                   <div className="bg-gray-50 rounded-lg p-4 max-h-40 overflow-y-auto">
                     <pre className="text-xs text-gray-600">
@@ -245,10 +278,21 @@ function CallDetailsModal({ call }: { call: CallRow }) {
                   </div>
                 </div>
               )}
+              
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  style={{ color: '#374151 !important' }}
+                >
+                  Go Back
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </details>
+      )}
+    </>
   );
 }

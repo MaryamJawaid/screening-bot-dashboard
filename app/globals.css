@@ -12,10 +12,11 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Disable dark mode - force light mode always */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #ffffff;
+    --foreground: #1f2937;
   }
 }
 
@@ -27,17 +28,63 @@ body {
 
 /* Force dark text for all elements */
 * {
-  color: inherit;
+  color: #1f2937 !important;
 }
 
 /* Ensure main content has dark text */
 main {
-  color: #1f2937;
+  color: #1f2937 !important;
 }
 
 /* Fix any white text issues */
 h1, h2, h3, h4, h5, h6, p, span, div, label {
-  color: inherit;
+  color: #1f2937 !important;
+}
+
+/* Specific fixes for common elements */
+.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600 {
+  color: #1f2937 !important;
+}
+
+/* Button text - force white text on dark buttons only */
+button.bg-blue-600,
+button.bg-blue-700,
+button.bg-black,
+button.bg-gray-800,
+button.bg-gray-900,
+.bg-blue-600,
+.bg-blue-700,
+.bg-black,
+.bg-gray-800,
+.bg-gray-900 {
+  color: white !important;
+}
+
+/* Light colored buttons should have dark text */
+.bg-blue-100, .bg-gray-100, .bg-green-100, .bg-yellow-100 {
+  color: #1f2937 !important;
+}
+
+/* Link-style buttons should maintain their color */
+button.text-blue-600,
+button.text-blue-800,
+.text-blue-600,
+.text-blue-800 {
+  color: #2563eb !important;
+}
+
+button.text-blue-600:hover,
+button.text-blue-800:hover {
+  color: #1d4ed8 !important;
+}
+
+/* Link text */
+a {
+  color: #2563eb !important;
+}
+
+a:hover {
+  color: #1d4ed8 !important;
 }
 
 /* Fix phone input styling */

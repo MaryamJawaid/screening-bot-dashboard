@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       if (Array.isArray(payload.transcript)) {
         // If transcript is array of messages, combine them
         transcription = payload.transcript
-          .map(t => `${t.role}: ${t.message}`)
+          .map((t: any) => `${t.role}: ${t.message}`)
           .join('\n');
       } else if (typeof payload.transcript === 'string') {
         transcription = payload.transcript;

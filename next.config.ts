@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  basePath: '/screening-bot-dashboard',
+  assetPrefix: '/screening-bot-dashboard',
+  trailingSlash: true,
 };
 
 export default nextConfig;

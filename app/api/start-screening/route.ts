@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { createPendingSession, createCallSession } from '@/lib/db';
+
+const AGENT_KEY = process.env.SCREENING_AGENT_KEY || 'ksa_screening_interview_agent';
+const WORKFLOW_SLUG = 'ksa_screening_interview';
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,26 +22,27 @@ export async function POST(req: NextRequest) {
     await createPendingSession({
       phoneNumber,
       candidateName,
-      agentKey: 'ksa_screening_interview_agent',
+      agentKey: AGENT_KEY,
     });
 
-    // Prepare payload for IngressFlow (matching working curl structure)
     const payload = {
-      agent_key: 'ksa_screening_interview_agent',
-      workflow_key: 'ksa_screening_interview',
+      agent_key: AGENT_KEY,
       data: {
-        workflow_slug: 'ksa_screening_interview',
-        workflow_id: 20,
+        uuid: randomUUID(),
+        task_type_slug: WORKFLOW_SLUG,
+        workflow_slug: WORKFLOW_SLUG,
+        workflow_id: '19',
+        candidate_name: candidateName,
         client: {
+          contact_number: phoneNumber,
           name: candidateName,
-          cell_number: phoneNumber,
+          language: 'en',
         },
       },
     };
 
     console.log('Sending payload to IngressFlow:', JSON.stringify(payload, null, 2));
 
-    // Call IngressFlow API using environment variable
     const ingressFlowUrl = process.env.INGRESSFLOW_WEBHOOK_URL || 'https://echo.ingressflow.com/external/workflow/invoke';
     const response = await fetch(ingressFlowUrl, {
       method: 'POST',

@@ -20,7 +20,7 @@ export default function ScreeningDashboard() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/start-screening', {
+      const response = await fetch('/api/start-screening/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -31,7 +31,13 @@ export default function ScreeningDashboard() {
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data: { error?: string };
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error('Server returned an invalid response. Make sure the dev server is running at http://localhost:3000/');
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to start screening call');

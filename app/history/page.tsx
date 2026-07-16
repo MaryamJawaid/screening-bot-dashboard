@@ -324,8 +324,8 @@ function CallDetailsModal({ call }: { call: CallRow }) {
       
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <div className="p-6 w-full min-w-0">
               <div className="flex justify-between items-start mb-4">
                 <h2 className="text-xl font-semibold text-gray-900" style={{ color: '#1f2937 !important' }}>
                   Call Details - {call.name}
@@ -404,7 +404,7 @@ function CallDetailsModal({ call }: { call: CallRow }) {
               )}
 
               {call.analysis && (
-                <div className="mb-6">
+                <div className="mb-6 w-full min-w-0">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Score Card</label>
                   <ScoreCard analysis={call.analysis} />
                 </div>
@@ -449,25 +449,32 @@ const DECISION_COLORS: Record<string, string> = {
 };
 
 function ScoreCard({ analysis }: { analysis: any }) {
-  const scores: Record<string, number> | undefined = analysis?.scores;
-  const decision: string | undefined = analysis?.decision;
-  const finalScore: number | undefined = analysis?.final_score;
-  const decisionLogic: string | undefined = analysis?.decision_logic;
-  const candidateSummary: string | undefined = analysis?.candidate_summary;
-  const missingInformation: string[] | undefined = analysis?.missing_information;
+  const normalizedAnalysis =
+    analysis?.scores || analysis?.decision || analysis?.final_score !== undefined
+      ? analysis
+      : analysis?.response?.analysis ?? analysis?.analysis ?? analysis;
+
+  const scores: Record<string, number> | undefined = normalizedAnalysis?.scores;
+  const decision: string | undefined = normalizedAnalysis?.decision;
+  const finalScore: number | undefined = normalizedAnalysis?.final_score;
+  const decisionLogic: string | undefined = normalizedAnalysis?.decision_logic;
+  const candidateSummary: string | undefined = normalizedAnalysis?.candidate_summary;
+  const missingInformation: string[] | undefined = normalizedAnalysis?.missing_information;
 
   // Fallback for older records that don't match the scorecard shape
   if (!scores && !decision && finalScore === undefined) {
     return (
       <div className="bg-gray-50 rounded-lg p-4 max-h-40 overflow-y-auto">
-        <pre className="text-xs text-gray-600">{JSON.stringify(analysis, null, 2)}</pre>
+        <pre className="text-xs text-gray-600 whitespace-pre-wrap break-words">
+          {JSON.stringify(analysis, null, 2)}
+        </pre>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+    <div className="space-y-4 w-full min-w-0">
+      <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4 w-full min-w-0">
         <div>
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Final Score</div>
           <div className="text-3xl font-bold text-gray-900">{finalScore ?? '—'}</div>
@@ -484,10 +491,10 @@ function ScoreCard({ analysis }: { analysis: any }) {
       </div>
 
       {scores && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0">
           {Object.entries(scores).map(([key, value]) => (
-            <div key={key} className="bg-white border border-gray-200 rounded-lg p-3">
-              <div className="text-xs text-gray-500">{SCORE_LABELS[key] || key}</div>
+            <div key={key} className="bg-white border border-gray-200 rounded-lg p-3 w-full min-w-0">
+              <div className="text-xs text-gray-500 break-words">{SCORE_LABELS[key] || key}</div>
               <div className="text-lg font-semibold text-gray-900">
                 {value}
                 <span className="text-xs text-gray-400">/5</span>
@@ -498,23 +505,27 @@ function ScoreCard({ analysis }: { analysis: any }) {
       )}
 
       {candidateSummary && (
-        <div>
+        <div className="w-full min-w-0">
           <div className="text-sm font-medium text-gray-700 mb-1">Candidate Summary</div>
-          <div className="text-sm text-gray-900 bg-gray-50 rounded-lg p-3">{candidateSummary}</div>
+          <p className="text-sm text-gray-900 bg-gray-50 rounded-lg p-3 break-words whitespace-normal leading-relaxed">
+            {candidateSummary}
+          </p>
         </div>
       )}
 
       {decisionLogic && (
-        <div>
+        <div className="w-full min-w-0">
           <div className="text-sm font-medium text-gray-700 mb-1">Decision Logic</div>
-          <div className="text-sm text-gray-900 bg-gray-50 rounded-lg p-3">{decisionLogic}</div>
+          <p className="text-sm text-gray-900 bg-gray-50 rounded-lg p-3 break-words whitespace-normal leading-relaxed">
+            {decisionLogic}
+          </p>
         </div>
       )}
 
       {missingInformation && missingInformation.length > 0 && (
-        <div>
+        <div className="w-full min-w-0">
           <div className="text-sm font-medium text-gray-700 mb-1">Missing Information</div>
-          <ul className="list-disc list-inside text-sm text-gray-900 bg-gray-50 rounded-lg p-3">
+          <ul className="list-disc list-inside text-sm text-gray-900 bg-gray-50 rounded-lg p-3 break-words whitespace-normal">
             {missingInformation.map((item, i) => (
               <li key={i}>{item}</li>
             ))}

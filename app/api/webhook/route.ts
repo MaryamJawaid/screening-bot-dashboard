@@ -6,9 +6,13 @@ export async function POST(req: NextRequest) {
     const payload = await req.json();
     console.log('Echo webhook received:', JSON.stringify(payload, null, 2));
 
+    // Echo wraps call data in request.request_payload.call_metadata
+    const requestPayload = payload.request?.request_payload;
+    const callMetadata = requestPayload?.call_metadata;
+
     // Extract phone number from Echo's webhook payload
-    // Based on your Echo DB data: clientContactNumber in dynamic_variables
-    const phoneNumber = payload.phone_number || 
+    const phoneNumber = callMetadata?.phone_number ||
+                       payload.phone_number ||
                        payload.data?.clientContactNumber ||
                        payload.clientContactNumber ||
                        payload.dynamic_variables?.clientContactNumber ||
@@ -27,12 +31,15 @@ export async function POST(req: NextRequest) {
     // Extract call data from Echo webhook format
     const status = payload.status || payload.call_status || 'completed';
     const conversationId = payload.conversation_id;
-    const audioUrl = payload.audio_url;
-    const duration = payload.duration_seconds || payload.call_duration;
-    
-    // Extract transcription - Echo sends it in transcript field
+    const audioUrl = callMetadata?.audio_url || payload.audio_url;
+    const duration = callMetadata?.call_duration ?? payload.duration_seconds ?? payload.call_duration;
+
+    // Extract transcription - Echo sends it as a plain string in call_metadata.call_transcription,
+    // but keep the older `transcript` shapes as a fallback
     let transcription = null;
-    if (payload.transcript) {
+    if (callMetadata?.call_transcription) {
+      transcription = callMetadata.call_transcription;
+    } else if (payload.transcript) {
       if (Array.isArray(payload.transcript)) {
         // If transcript is array of messages, combine them
         transcription = payload.transcript
@@ -45,16 +52,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Extract analysis data from Echo's metadata
-    const analysis = {
-      conversation_id: conversationId,
-      echo_metadata: payload.metadata || {},
-      analysis: payload.analysis || {},
-      transcript_summary: payload.analysis?.transcript_summary || null,
-      call_successful: payload.analysis?.call_successful || null,
-      processed_at: new Date().toISOString(),
-    };
-
     // Map Echo status to our status
     let finalStatus = 'completed';
     if (status === 'answered' || status === 'completed' || status === 'done') {
@@ -66,6 +63,36 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`Processing Echo webhook for ${phoneNumber}, status: ${status} -> ${finalStatus}`);
+
+    // Send transcript to Ingress for the screening scorecard
+    let analysis = null;
+    if (transcription) {
+      try {
+        const analysePayload = {
+          request: {
+            request_type: 'screening-bot-post-analysis',
+            request_payload: {
+              text: transcription,
+            },
+          },
+        };
+
+        const analyseResponse = await fetch('https://propforce-bayut-sa.ingressflow.com/external/requests/analyse', {
+          method: 'POST',
+          headers: {
+            'auth-token': process.env.ANALYSE_AUTH_TOKEN ?? '',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(analysePayload),
+        });
+
+        const analyseResult = await analyseResponse.json();
+        console.log('Ingress post-analysis response:', JSON.stringify(analyseResult, null, 2));
+        analysis = analyseResult?.response?.analysis ?? null;
+      } catch (err) {
+        console.error('Ingress post-analysis call failed:', err);
+      }
+    }
 
     // Update call session in Neon database
     await updateSessionByPhone(phoneNumber, {

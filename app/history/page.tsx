@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCallHistory, type CallRow } from "@/lib/db";
 import { formatDistanceToNow } from "date-fns";
 import { useEffect, useState } from "react";
+import { BASE_PATH } from "@/lib/basePath";
 
 function StatusBadge({ status }: { status: string }) {
   const statusColors: Record<string, string> = {
@@ -61,7 +62,7 @@ export default function CallHistoryPage() {
         limit: '20'
       });
       
-      const response = await fetch(`/api/calls?${params}`);
+      const response = await fetch(`${BASE_PATH}/api/calls?${params}`);
       const data = await response.json();
       
       setCalls(data.calls);
@@ -309,6 +310,7 @@ export default function CallHistoryPage() {
 
 function CallDetailsModal({ call }: { call: CallRow }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showTranscription, setShowTranscription] = useState(false);
 
   return (
     <>
@@ -321,7 +323,7 @@ function CallDetailsModal({ call }: { call: CallRow }) {
       </button>
       
       {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
@@ -380,26 +382,31 @@ function CallDetailsModal({ call }: { call: CallRow }) {
 
               {call.transcription && (
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Transcription</label>
-                  <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
-                    <pre className="text-sm text-gray-900 whitespace-pre-wrap">
-                      {typeof call.transcription === 'string' 
-                        ? call.transcription 
-                        : JSON.stringify(call.transcription, null, 2)
-                      }
-                    </pre>
-                  </div>
+                  <button
+                    onClick={() => setShowTranscription((prev) => !prev)}
+                    className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2 cursor-pointer hover:text-gray-900"
+                    style={{ color: '#374151 !important' }}
+                  >
+                    <span className={`inline-block transition-transform ${showTranscription ? 'rotate-90' : ''}`}>▶</span>
+                    Transcription
+                  </button>
+                  {showTranscription && (
+                    <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+                      <pre className="text-sm text-gray-900 whitespace-pre-wrap">
+                        {typeof call.transcription === 'string'
+                          ? call.transcription
+                          : JSON.stringify(call.transcription, null, 2)
+                        }
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
 
               {call.analysis && (
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Analysis</label>
-                  <div className="bg-gray-50 rounded-lg p-4 max-h-40 overflow-y-auto">
-                    <pre className="text-xs text-gray-600">
-                      {JSON.stringify(call.analysis, null, 2)}
-                    </pre>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Score Card</label>
+                  <ScoreCard analysis={call.analysis} />
                 </div>
               )}
               
@@ -418,5 +425,102 @@ function CallDetailsModal({ call }: { call: CallRow }) {
         </div>
       )}
     </>
+  );
+}
+
+const SCORE_LABELS: Record<string, string> = {
+  role_fit: 'Role Fit',
+  red_flags: 'Red Flags',
+  motivation: 'Motivation',
+  coachability: 'Coachability',
+  company_research: 'Company Research',
+  discovery_instinct: 'Discovery Instinct',
+  objection_handling: 'Objection Handling',
+  structured_thinking: 'Structured Thinking',
+  phone_presence_energy: 'Phone Presence & Energy',
+  quota_numbers_literacy: 'Quota/Numbers Literacy',
+  listening_question_asking: 'Listening & Question-Asking',
+};
+
+const DECISION_COLORS: Record<string, string> = {
+  advance: 'bg-green-100 text-green-800 border-green-200',
+  reject: 'bg-red-100 text-red-800 border-red-200',
+  hold: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+};
+
+function ScoreCard({ analysis }: { analysis: any }) {
+  const scores: Record<string, number> | undefined = analysis?.scores;
+  const decision: string | undefined = analysis?.decision;
+  const finalScore: number | undefined = analysis?.final_score;
+  const decisionLogic: string | undefined = analysis?.decision_logic;
+  const candidateSummary: string | undefined = analysis?.candidate_summary;
+  const missingInformation: string[] | undefined = analysis?.missing_information;
+
+  // Fallback for older records that don't match the scorecard shape
+  if (!scores && !decision && finalScore === undefined) {
+    return (
+      <div className="bg-gray-50 rounded-lg p-4 max-h-40 overflow-y-auto">
+        <pre className="text-xs text-gray-600">{JSON.stringify(analysis, null, 2)}</pre>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+        <div>
+          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Final Score</div>
+          <div className="text-3xl font-bold text-gray-900">{finalScore ?? '—'}</div>
+        </div>
+        {decision && (
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border capitalize ${
+              DECISION_COLORS[decision] || 'bg-gray-100 text-gray-800 border-gray-200'
+            }`}
+          >
+            {decision}
+          </span>
+        )}
+      </div>
+
+      {scores && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {Object.entries(scores).map(([key, value]) => (
+            <div key={key} className="bg-white border border-gray-200 rounded-lg p-3">
+              <div className="text-xs text-gray-500">{SCORE_LABELS[key] || key}</div>
+              <div className="text-lg font-semibold text-gray-900">
+                {value}
+                <span className="text-xs text-gray-400">/5</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {candidateSummary && (
+        <div>
+          <div className="text-sm font-medium text-gray-700 mb-1">Candidate Summary</div>
+          <div className="text-sm text-gray-900 bg-gray-50 rounded-lg p-3">{candidateSummary}</div>
+        </div>
+      )}
+
+      {decisionLogic && (
+        <div>
+          <div className="text-sm font-medium text-gray-700 mb-1">Decision Logic</div>
+          <div className="text-sm text-gray-900 bg-gray-50 rounded-lg p-3">{decisionLogic}</div>
+        </div>
+      )}
+
+      {missingInformation && missingInformation.length > 0 && (
+        <div>
+          <div className="text-sm font-medium text-gray-700 mb-1">Missing Information</div>
+          <ul className="list-disc list-inside text-sm text-gray-900 bg-gray-50 rounded-lg p-3">
+            {missingInformation.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
+import { BASE_PATH } from "@/lib/basePath";
 
 export default function ScreeningDashboard() {
   const [candidateName, setCandidateName] = useState("");
@@ -20,7 +21,7 @@ export default function ScreeningDashboard() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/start-screening/', {
+      const response = await fetch(`${BASE_PATH}/api/start-screening/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
